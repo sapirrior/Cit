@@ -1,76 +1,85 @@
-# Cit - Modern Local-First Version Control
+# Cit - High-Performance Local-First Version Control
 
-**Cit** is a high-performance, secure, and lightweight version control system written in C. It follows the core philosophy of Git but upgrades the security to **SHA-256** and optimizes every operation for a lightning-fast **local-first** experience.
+Cit is a professional-grade version control system written in C. It is designed to provide a secure, lightweight, and fast local version control experience by employing SHA-256 hashing for data integrity and optimized filesystem operations.
 
-## 🚀 Key Features
-- **SHA-256 Security**: Mandatory hashing for all objects ensures industry-standard data integrity.
-- **Zero-Config Portability**: Works out-of-the-box on Linux, macOS, Android (Termux), and Windows.
-- **Visual Status**: Beautifully color-coded status reports to track staged, modified, and untracked files.
-- **Memory Efficient**: Built with dynamic resource management to handle projects of any size.
+## Core Technical Specifications
+- Data Integrity: Mandatory SHA-256 identification for all project objects.
+- Architecture: Modular C design with zlib-based compression.
+- Portability: POSIX-compliant implementation supporting Linux, macOS, Android (Termux), and Windows environments.
+- Efficiency: Dynamic memory management for handling large repositories.
 
-## 🛠️ Installation & Setup
+## Installation and System Integration
 
 ### 1. Build from Source
-Ensure you have `gcc`, `make`, and `zlib` installed.
+To compile Cit, ensure that the GCC compiler, Make, and the zlib development library are installed on your system. Execute the following command in the project root:
 ```bash
 make
 ```
 
-### 2. Configure Your Identity
-Before committing, set your global name and email:
+### 2. Global Installation (Recommended)
+To use Cit efficiently from any directory, move the compiled binary to a location in your system's execution path (PATH).
+
+For Linux, macOS, or Termux:
 ```bash
-./cit config -u "Your Name"
-./cit config -e "yourname@example.com"
+# Move the binary to a standard local bin directory
+mkdir -p ~/bin
+cp cit ~/bin/
+
+# Ensure ~/bin is in your shell's PATH by adding this to your .bashrc or .zshrc:
+export PATH="$HOME/bin:$PATH"
 ```
 
-## 📖 Quick Start Guide
-
-### Initialize a Repository
-Turn any folder into a Cit repository:
+Alternatively, for system-wide access (requires administrative privileges):
 ```bash
-./cit init
+sudo cp cit /usr/local/bin/
 ```
 
-### Track and Stage Files
-Add files to your staging area (index):
+## Initial Configuration
+You must configure your global identity before performing commit or branch operations:
 ```bash
-./cit add my_file.txt    # Add a specific file
-./cit add .              # Add everything in the folder
+cit config -u "Full Name"
+cit config -e "email@example.com"
 ```
 
-### Check Status
-See what has changed in your working directory:
+## Basic Operations Guide
+
+### Repository Initialization
+Convert a directory into a Cit repository:
 ```bash
-./cit status
+cit init
 ```
 
-### Save a Snapshot
-Record your staged changes permanently:
+### Staging Changes
+Add files or directories to the staging area:
 ```bash
-./cit commit "My first commit"
+cit add <filename>    # Stage a specific file
+cit add .             # Stage all changes in the current directory
 ```
 
-### View History
-See your project's timeline:
+### Status Reporting
+View the current state of the working directory and staged changes:
 ```bash
-./cit log
+cit status
 ```
 
-### Branching
-Work on new features without breaking the main project:
+### Committing Changes
+Record the staged snapshot into the repository history:
 ```bash
-./cit branch feature-x   # Create a branch
-./cit branch             # List all branches
+cit commit "Descriptive commit message"
 ```
+
+### History and Branching
+- View commit logs: `cit log`
+- List all branches: `cit branch`
+- Create a new branch: `cit branch <branch_name>`
+- Delete a branch: `cit branch -d <branch_name>`
 
 ### State Restoration
-Go back in time or restore specific files:
+Restore the working directory or specific files to a previous state:
 ```bash
-./cit checkout <sha>     # Restore the whole project to this commit
+cit checkout <commit_sha>
 ```
+Note: Cit will request manual confirmation (y/n) before overwriting existing local files.
 
-## ⚠️ Safety First
-Cit prioritizes your data. Destructive operations like `checkout` will always ask for your confirmation (`y/n`) before overwriting any of your local files.
-
-## 📄 License
-Cit is released under the MIT License. Feel free to use, modify, and distribute!
+## License
+This project is licensed under the MIT License.
