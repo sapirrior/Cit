@@ -6,68 +6,64 @@ Cit is a high-performance, local-first version control system written in C, desi
 ## Architecture & Modular Structure
 The codebase follows a strict modular design:
 - **`src/`**: Implementation files (`.c`).
-- **`src/include/`**: Header files (`.h`).
+- **`src/core/`**: Core logic (Object store, Index, Hashing, Config, Refs).
+- **`src/commands/`**: CLI command implementations.
+- **`src/ui/`**: User interface and themed output.
+- **`src/utils/`**: System utilities and portability layer.
 - **`objects/`**: Compiled object files (`.o`), kept separate from source to maintain a clean tree.
-- **`Makefile`**: Standard build system linking against `zlib` (`-lz`).
+- **`Makefile`**: Dynamic build system linking against `zlib` (`-lz`) and `libcurl` (`-lcurl`).
 
 ### Core Modules
-- **`main.c`**: CLI entry point, command dispatcher, and robust help system (`-h`, `--help`).
-- **`commands.c`**: Core logic for all CLI commands, including a sophisticated status engine.
-- **`object.c`**: Content-addressable storage. Uses `zlib` for compression and a dynamic `inflate` buffer for reading objects of any size.
-- **`index.c`**: Binary staging area management. Tracks file paths, SHA-256 hashes, sizes, and `mtime`.
-- **`sha256.c`**: Independent, dependency-free SHA-256 implementation.
-- **`utils.c`**: System-level utilities, robust email validation, and path normalization logic.
-- **`portability.h`**: POSIX-compliant abstraction layer for cross-platform support (Linux, macOS, Android, Windows).
+- **`main.c`**: CLI entry point and command dispatcher.
+- **`src/ui/ui.c`**: Centralized UI module using GitHub Primer design system colors (Truecolor).
+- **`src/core/object/`**: Content-addressable storage (Blobs, Trees, Commits).
+- **`src/core/index/`**: Binary staging area management.
+- **`src/core/hash/`**: SHA-256 implementation.
+- **`src/core/config/`**: Repository and global configuration.
+- **`src/core/refs/`**: Branch and HEAD management.
 
 ## Technical Implementation Details
 
 ### Data Storage & Integrity
 - **Objects**: Compressed blobs stored at `.cit/objects/[first-2-chars-sha]/[rest-of-sha]`.
 - **Refs**: Branch pointers at `.cit/refs/heads/[branch-name]`.
-- **HEAD**: Pointer to current branch at `.cit/HEAD` (Format: `ref: refs/heads/[branch]`).
+- **HEAD**: Pointer to current branch at `.cit/HEAD`.
 - **Index**: Binary file at `.cit/index` containing `IndexEntry` structs.
-- **SHA-256**: All content is identified by its SHA-256 hash for absolute data integrity.
+- **SHA-256**: All content is identified by its SHA-256 hash.
 
-### Hardened Logic & Security
-- **Memory Safety**: Mandatory `NULL` pointer checks on all `malloc` and `realloc` operations across the entire codebase.
-- **Dynamic Commit Buffers**: `cmd_commit` utilizes dynamic memory for commit messages, removing fixed-length limitations and preventing buffer overflows.
-- **Robust Email Validation**: Strict rules (no leading digits, valid TLD length >= 2, single '@') enforced during configuration.
-- **Safe Operations**: Destructive `checkout` operations require explicit `y/n` confirmation.
-- **Path Normalization**: `status` and `add` operations strip leading `./` prefixes to ensure consistent path matching regardless of how files are targeted.
-
-### Resource Management
-- **Streaming Decompression**: `read_object` uses `zlib`'s `inflate` with an auto-doubling buffer (starting at 1MB) to handle large objects without memory exhaustion.
-- **Unlimited File Support**: `cmd_status` and `cmd_checkout` use dynamic memory to track an unlimited number of files in a single repository.
-- **Error Propagation**: All recursive operations properly propagate error codes and ensure memory cleanup in all exit paths.
+### User Interface (GitHub.com Aesthetic)
+- **Colors**: Uses exact HEX tokens from GitHub's Primer design system via Truecolor ANSI.
+  - `FG_SUCCESS`: `#3FB950` (Green)
+  - `FG_DANGER`: `#F85149` (Red)
+  - `FG_ATTENTION`: `#D29922` (Yellow)
+  - `FG_ACCENT`: `#58A6FF` (Blue)
+- **Output**: Structured and user-friendly with consistent symbols and headers.
 
 ## CLI Reference
+(See README.md for full command list)
 
-### Repository & Config
-- `cit init`: Initialize repository.
-- `cit config -u <name>`: Set global username.
-- `cit config -e <email>`: Set global email (validated).
-- `cit -h` / `cit --help`: Show detailed help message.
-
-### Staging & Status
-- `cit add <path>`: Stage files/directories recursively.
-- `cit status`: Comprehensive status report:
-  - **Staged (Green)**: Changes ready for commit.
-  - **Modified (Red)**: Changes in working directory (detected via `mtime`/`size` comparison).
-  - **Untracked (Red)**: New files not yet added.
-  - **Deleted (Red)**: Tracked files missing from disk.
-
-### History & Branching
-- `cit commit "<msg>"`: Create a new snapshot of the index.
-- `cit log`: View scrollable commit history.
-- `cit branch`: List all branches (current marked with `*`).
-- `cit branch <name>`: Create a new branch.
-- `cit branch -d <name>`: Delete a branch.
-- `cit branch -m <old> <new>`: Rename a branch.
-
-### State Restoration
-- `cit checkout <sha> [<path>]`: Restore entire commit or a specific file. Requires confirmation.
-
-## Portability Layer
-- **Windows**: Uses `_mkdir`, `_getcwd`, and `USERPROFILE` for config.
-- **Unix/POSIX**: Uses `mkdir`, `getcwd`, and `HOME`.
-- **Path Separators**: Logic handles both `/` and `\` to ensure cross-OS compatibility.
+--- Changes Made ---
+- **Refactoring Stage 1: Modularization**
+  - Created modular directory structure in `src/`: `core/object`, `core/index`, `core/hash`, `core/config`, `core/refs`, `commands`, `utils`, `ui`.
+  - Moved `utils.c`, `utils.h`, and `portability.h` to `src/utils/`.
+  - Moved `sha256.c` and `sha256.h` to `src/core/hash/`.
+  - Updated `Makefile` to dynamically find source files and include all modular directories. Added `mkdir -p` logic for all object subdirectories.
+  - Split `commands.c` into individual files in `src/commands/`: `cmd_init.c`, `cmd_add.c`, `cmd_commit.c`, `cmd_status.c`, `cmd_log.c`, `cmd_branch.c`, `cmd_config.c`, `cmd_checkout.c`.
+  - Created `src/core/config/config.c/h` and moved `check_config` logic there.
+  - Created `src/core/refs/refs.c/h` and moved branch/HEAD management logic there.
+  - Refined all commands to use modularized core logic.
+- **UI & Aesthetic Overhaul (GitHub-themed)**
+  - Implemented `src/ui/ui.c/h` with Truecolor ANSI support and GitHub Primer color palette.
+  - Updated `cmd_init`, `cmd_status`, `cmd_log`, `cmd_branch`, and `cmd_commit` to use the new UI module for a professional, structured output.
+- **Feature Addition: Diff Command**
+  - Implemented Myers Diff algorithm in `src/utils/diff.c/h`.
+  - Added `cit diff` command in `src/commands/cmd_diff.c` to show unstaged changes (Working Tree vs Index).
+  - Integrated `diff` into `main.c` and `commands.h`.
+- **Feature Addition: Show Command**
+  - Added `cit show <sha>` in `src/commands/cmd_show.c` to display commit details and message.
+- **Feature Addition: Reset Command**
+  - Added `cit reset <file>` in `src/commands/cmd_reset.c` to unstage files from the index.
+- **Feature Addition: Clone Command**
+  - Added `cit clone <url>` in `src/commands/cmd_clone.c`.
+  - Uses system `git clone` for protocol handling and then converts/initializes a `cit` repository.
+  - Prompts user to delete the original `.git` folder after conversion.
