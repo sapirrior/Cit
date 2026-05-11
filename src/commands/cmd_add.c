@@ -5,8 +5,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 static int add_file(Index *index, const char *path) {
+    // 1. Check for existing version in index for delta compression
+    char base_sha[65] = "";
+    int low = 0, high = (int)index->count - 1;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        int cmp = strcmp(index->entries[mid].path, path);
+        if (cmp == 0) {
+            for (int j = 0; j < 32; j++) {
+                snprintf(base_sha + (j * 2), sizeof(base_sha) - (j * 2), "%02x", index->entries[mid].sha256[j]);
+            }
+            base_sha[64] = 0;
+            break;
+        }
+        if (cmp < 0) low = mid + 1;
+        else high = mid - 1;
+    }
+
     FILE *f = fopen(path, "rb");
     if (!f) {
         fprintf(stderr, "Error: Could not open file %s\n", path);
@@ -16,15 +34,21 @@ static int add_file(Index *index, const char *path) {
     size_t size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    void *buf = malloc(size);
+    void *buf = malloc(size + 1);
     if (!buf) {
         fclose(f);
         return -1;
     }
-    fread(buf, 1, size, f);
+    if (size > 0) {
+        if (fread(buf, 1, size, f) != size) {
+            free(buf);
+            fclose(f);
+            return -1;
+        }
+    }
     fclose(f);
 
-    char *sha256_hex = write_object(buf, size, OBJ_BLOB);
+    char *sha256_hex = write_object_ext(buf, size, OBJ_BLOB, strlen(base_sha) > 0 ? base_sha : NULL);
     if (!sha256_hex) {
         free(buf);
         return -1;
@@ -32,7 +56,9 @@ static int add_file(Index *index, const char *path) {
 
     uint8_t sha256_bytes[32];
     for (int i = 0; i < 32; i++) {
-        sscanf(sha256_hex + (i * 2), "%02hhx", &sha256_bytes[i]);
+        unsigned int val;
+        sscanf(sha256_hex + (i * 2), "%02x", &val);
+        sha256_bytes[i] = (uint8_t)val;
     }
 
     add_to_index(index, path, sha256_bytes, (uint32_t)size);
@@ -74,7 +100,11 @@ int cmd_add(int argc, char *argv[]) {
 
     Index *index = read_index();
     for (int i = 0; i < argc; i++) {
-        add_recursive(index, argv[i]);
+        char normalized[1024];
+        strncpy(normalized, argv[i], sizeof(normalized) - 1);
+        normalized[sizeof(normalized) - 1] = '\0';
+        normalize_path(normalized);
+        add_recursive(index, normalized);
     }
     write_index(index);
     free_index(index);

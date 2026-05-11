@@ -4,13 +4,14 @@
 
 # Cit - Local-First Version Control
 
-Cit is a version control system written in C. It is designed to provide a secure and fast local version control experience by employing SHA-256 hashing for data integrity and filesystem operations.
+Cit is a high-integrity version control system written in C. It is designed to provide a secure and fast local version control experience by employing SHA-256 content addressing, hierarchical Merkle trees, and advanced storage optimizations.
 
 ## Core Technical Specifications
-- Data Integrity: Mandatory SHA-256 identification for all project objects.
-- Architecture: Modular C design with zlib-based compression.
-- Portability: POSIX-compliant implementation supporting Linux, macOS, Android (Termux), and Windows environments.
-- Efficiency: Dynamic memory management for handling large repositories.
+- **Data Integrity**: Mandatory SHA-256 identification for all objects (blobs, trees, and commits).
+- **Architecture**: Hierarchical Merkle tree structure for efficient directory-level hashing and state management.
+- **Storage Optimization**: Proprietary Cit-LZ compression (LZSS + Range Coder) and recursive delta encoding for minimal storage footprint.
+- **Security**: Built-in path normalization and transactional object creation with automatic rollback on failure.
+- **Portability**: POSIX-compliant implementation supporting Linux, macOS, Android (Termux), and Windows environments.
 
 ## Installation and System Integration
 

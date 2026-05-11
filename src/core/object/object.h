@@ -6,13 +6,17 @@
 typedef enum {
     OBJ_BLOB,
     OBJ_TREE,
-    OBJ_COMMIT
+    OBJ_COMMIT,
+    OBJ_DELTA
 } obj_type;
 
 /**
- * Write a buffer to the object store as a blob.
- * Returns the SHA-256 hash of the object (as a hex string).
+ * Write a buffer to the object store.
+ * If base_sha256 is provided, it will attempt to store a delta.
  */
+char *write_object_ext(const void *buf, size_t len, obj_type type, const char *base_sha256);
+
+// Legacy wrapper
 char *write_object(const void *buf, size_t len, obj_type type);
 
 /**

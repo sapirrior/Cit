@@ -74,6 +74,65 @@ $CIT_BIN add .
 $CIT_BIN commit "Nested commit"
 check_status $? "Deep nesting support"
 
+# 8. Smart Checkout & Branch Switching
+echo "Testing branch switching..."
+$CIT_BIN branch feature/stable-v1
+check_status $? "Branch creation"
+
+$CIT_BIN checkout feature/stable-v1
+check_status $? "Switch to branch feature/stable-v1"
+
+# Verify HEAD
+grep "ref: refs/heads/feature/stable-v1" .cit/HEAD > /dev/null
+check_status $? "HEAD correctly points to new branch"
+
+# Create a commit on the new branch
+echo "Feature content" > feature.txt
+$CIT_BIN add feature.txt
+$CIT_BIN commit "Feature commit"
+
+# Switch back to main
+$CIT_BIN checkout main
+check_status $? "Switch back to main"
+grep "ref: refs/heads/main" .cit/HEAD > /dev/null
+check_status $? "HEAD correctly points to main"
+
+# 9. Delta Compression Verification (in a fresh repo to isolate tree overhead)
+echo "Testing Delta Compression..."
+mkdir -p delta_test_repo
+cd delta_test_repo
+$CIT_BIN init > /dev/null
+
+echo "Large base content for delta testing. Repeating to ensure size." > delta_test.txt
+for i in {1..100}; do echo "Line $i: some repetitive data" >> delta_test.txt; done
+
+$CIT_BIN add delta_test.txt
+$CIT_BIN commit "Delta base" > /dev/null
+BASE_OBJ_SIZE=$(du -sb .cit/objects | cut -f1)
+
+echo "Adding one line for delta" >> delta_test.txt
+$CIT_BIN add delta_test.txt
+$CIT_BIN commit "Delta update 1" > /dev/null
+
+echo "Adding another line for delta" >> delta_test.txt
+$CIT_BIN add delta_test.txt
+$CIT_BIN commit "Delta update 2" > /dev/null
+
+FINAL_OBJ_SIZE=$(du -sb .cit/objects | cut -f1)
+INCREASE=$((FINAL_OBJ_SIZE - BASE_OBJ_SIZE))
+
+# With 1 file, the tree and commit overhead is small (~200 bytes per commit)
+# Delta should be very efficient for this file.
+echo "Object store increased by $INCREASE bytes for 2 delta commits."
+if [ $INCREASE -lt 2000 ]; then
+    echo -e "${GREEN}[PASS]${NC} Delta compression active and efficient"
+else
+    echo -e "${RED}[FAIL]${NC} Delta compression inefficient or inactive (increase: $INCREASE)"
+    exit 1
+fi
+
+cd ..
+
 echo "---------------------------------------"
 echo -e "${GREEN}HARDCORE TEST SUITE COMPLETED SUCCESSFULLY${NC}"
 echo "---------------------------------------"

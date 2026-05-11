@@ -100,6 +100,7 @@ int cit_compress(const void *src, size_t src_len, void *dst, size_t *dst_len) {
     bw_init(&bw, out + 12);
 
     int32_t *hash_table = malloc(HASH_SIZE * sizeof(int32_t));
+    if (!hash_table) return -1;
     for (int i = 0; i < HASH_SIZE; i++) hash_table[i] = -1;
 
     size_t in_pos = 0;

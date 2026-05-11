@@ -2,30 +2,104 @@
 #include "object.h"
 #include "index.h"
 #include "utils.h"
+#include "refs.h"
 #include "portability.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+static int checkout_tree(const char *tree_sha, const char *base_path, Index *index) {
+    size_t obj_len;
+    obj_type type;
+    char *tree_content = read_object(tree_sha, &obj_len, &type);
+    if (!tree_content || type != OBJ_TREE) {
+        free(tree_content);
+        return -1;
+    }
+
+    if (strlen(base_path) > 0 && !dir_exists(base_path)) {
+        mkdir_p(base_path);
+    }
+
+    char *saveptr;
+    char *line = strtok_r(tree_content, "\n", &saveptr);
+    while (line) {
+        char type_str[10], sha[65], name[256];
+        if (sscanf(line, "%9s %64s %255s", type_str, sha, name) == 3) {
+            char sub_path[1024];
+            if (strlen(base_path) == 0) {
+                strncpy(sub_path, name, 1023);
+            } else {
+                snprintf(sub_path, sizeof(sub_path), "%s/%s", base_path, name);
+            }
+            sub_path[1023] = '\0';
+
+            if (strcmp(type_str, "blob") == 0) {
+                size_t blob_len;
+                obj_type btype;
+                void *blob_data = read_object(sha, &blob_len, &btype);
+                if (blob_data && btype == OBJ_BLOB) {
+                    FILE *fw = fopen(sub_path, "wb");
+                    if (fw) {
+                        fwrite(blob_data, 1, blob_len, fw);
+                        fclose(fw);
+                        printf("Restored %s\n", sub_path);
+
+                        uint8_t sha_bytes[32];
+                        for (int j = 0; j < 32; j++) {
+                            unsigned int val;
+                            sscanf(sha + (j * 2), "%02x", &val);
+                            sha_bytes[j] = (uint8_t)val;
+                        }
+                        add_to_index(index, sub_path, sha_bytes, (uint32_t)blob_len);
+                    }
+                    free(blob_data);
+                }
+            } else if (strcmp(type_str, "tree") == 0) {
+                checkout_tree(sha, sub_path, index);
+            }
+        }
+        line = strtok_r(NULL, "\n", &saveptr);
+    }
+    free(tree_content);
+    return 0;
+}
+
 int cmd_checkout(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Usage: cit checkout <commit-sha> [<path>]\n");
+        printf("Usage: cit checkout <commit-sha|branch-name>\n");
         return 1;
     }
 
-    char *target_sha = argv[1];
-    char *target_path = (argc > 2) ? argv[2] : NULL;
+    char *target = argv[1];
 
-    // 1. Get Tree SHA from Commit
+    // 1. Resolve target to a SHA
+    char *resolved_sha = get_ref_sha(target);
+    if (!resolved_sha) {
+        fprintf(stderr, "Error: Could not resolve %s to a commit or branch.\n", target);
+        return 1;
+    }
+    char target_sha[65];
+    strncpy(target_sha, resolved_sha, 64);
+    target_sha[64] = 0;
+
+    // 2. Update HEAD
+    char head_content[256];
+    char branch_path[512];
+    snprintf(branch_path, sizeof(branch_path), "refs/heads/%s", target);
+    if (get_ref_sha(target)) {
+        snprintf(head_content, sizeof(head_content), "ref: refs/heads/%s\n", target);
+    } else {
+        snprintf(head_content, sizeof(head_content), "%s\n", target_sha);
+    }
+    write_string_to_file(".cit/HEAD", head_content);
+
+    // 3. Get Tree SHA from Commit
     size_t obj_len;
     obj_type type;
     char *commit_content = read_object(target_sha, &obj_len, &type);
-    if (!commit_content) {
-        fprintf(stderr, "Error: Could not read commit %s. Check if it exists.\n", target_sha);
-        return 1;
-    }
-    if (type != OBJ_COMMIT) {
-        fprintf(stderr, "Error: Object %s is not a commit.\n", target_sha);
+    if (!commit_content || type != OBJ_COMMIT) {
+        fprintf(stderr, "Error: %s is not a commit.\n", target_sha);
         free(commit_content);
         return 1;
     }
@@ -43,121 +117,13 @@ int cmd_checkout(int argc, char *argv[]) {
         return 1;
     }
 
-    // 2. Read Tree object
-    char *tree_content = read_object(tree_sha, &obj_len, &type);
-    if (!tree_content) {
-        fprintf(stderr, "Error: Could not read tree %s\n", tree_sha);
-        return 1;
-    }
-    if (type != OBJ_TREE) {
-        fprintf(stderr, "Error: Object %s is not a tree.\n", tree_sha);
-        free(tree_content);
-        return 1;
-    }
-
-    // 3. Parse tree and identify files to restore
-    typedef struct {
-        char sha[65];
-        char path[1024];
-    } TreeEntry;
-    
-    uint32_t entry_cap = 128;
-    uint32_t entry_count = 0;
-    TreeEntry *entries = malloc(sizeof(TreeEntry) * entry_cap);
-    if (!entries) {
-        free(tree_content);
-        return 1;
-    }
-
-    char *saveptr;
-    char *line = strtok_r(tree_content, "\n", &saveptr);
-    while (line) {
-        if (entry_count >= entry_cap) {
-            entry_cap *= 2;
-            TreeEntry *new_entries = realloc(entries, sizeof(TreeEntry) * entry_cap);
-            if (!new_entries) {
-                free(tree_content);
-                free(entries);
-                return 1;
-            }
-            entries = new_entries;
-        }
-        
-        if (sscanf(line, "%64s %1023s", entries[entry_count].sha, entries[entry_count].path) == 2) {
-            // Filter if target_path is specified
-            if (!target_path || strcmp(entries[entry_count].path, target_path) == 0) {
-                entry_count++;
-            }
-        }
-        line = strtok_r(NULL, "\n", &saveptr);
-    }
-
-    if (entry_count == 0) {
-        if (target_path) printf("Path %s not found in commit %s\n", target_path, target_sha);
-        else printf("Commit tree is empty.\n");
-        free(tree_content);
-        free(entries);
-        return 0;
-    }
-
-    // 4. Confirmation
-    printf("Following files will be restored/overwritten:\n");
-    for (uint32_t i = 0; i < entry_count; i++) {
-        printf("  %s\n", entries[i].path);
-    }
-    printf("\nAre you sure you want to proceed? (y/n): ");
-    char choice[10];
-    if (!fgets(choice, sizeof(choice), stdin) || (choice[0] != 'y' && choice[0] != 'Y')) {
-        printf("Checkout cancelled.\n");
-        free(tree_content);
-        free(entries);
-        return 0;
-    }
-
-    // 5. Restore files
+    // 4. Recursive checkout
     Index *index = read_index();
-    for (uint32_t i = 0; i < entry_count; i++) {
-        size_t blob_len;
-        obj_type btype;
-        void *blob_data = read_object(entries[i].sha, &blob_len, &btype);
-        if (blob_data && btype == OBJ_BLOB) {
-            // Ensure parent directory exists
-            char *last_slash = strrchr(entries[i].path, '/');
-            if (last_slash) {
-                char dpath[1024];
-                strncpy(dpath, entries[i].path, last_slash - entries[i].path);
-                dpath[last_slash - entries[i].path] = 0;
-                mkdir_p(dpath);
-            }
-
-            FILE *fw = fopen(entries[i].path, "wb");
-            if (fw) {
-                if (fwrite(blob_data, 1, blob_len, fw) != blob_len) {
-                    fprintf(stderr, "Warning: Could not write all data to %s\n", entries[i].path);
-                }
-                fclose(fw);
-                printf("Restored %s\n", entries[i].path);
-                
-                // Update index to match checkout
-                uint8_t sha_bytes[32];
-                for (int j = 0; j < 32; j++) {
-                    sscanf(entries[i].sha + (j * 2), "%02hhx", &sha_bytes[j]);
-                }
-                add_to_index(index, entries[i].path, sha_bytes, (uint32_t)blob_len);
-            } else {
-                fprintf(stderr, "Error: Could not open %s for writing.\n", entries[i].path);
-            }
-            free(blob_data);
-        } else {
-            fprintf(stderr, "Error: Could not read blob %s for %s\n", entries[i].sha, entries[i].path);
-            if (blob_data) free(blob_data);
-        }
-    }
+    // Clear index first? For now, we update it.
+    checkout_tree(tree_sha, "", index);
     write_index(index);
     free_index(index);
 
-    free(tree_content);
-    free(entries);
-    printf("Checkout completed.\n");
+    printf("Switched to %s\n", target);
     return 0;
 }

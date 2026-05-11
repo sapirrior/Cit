@@ -19,7 +19,8 @@ int cmd_clone(int argc, char *argv[]) {
     if (!dir) {
         char *last_slash = strrchr(url, '/');
         if (last_slash) {
-            strcpy(dir_buf, last_slash + 1);
+            strncpy(dir_buf, last_slash + 1, sizeof(dir_buf) - 1);
+            dir_buf[sizeof(dir_buf) - 1] = '\0';
             char *dot_git = strstr(dir_buf, ".git");
             if (dot_git) *dot_git = '\0';
             dir = dir_buf;

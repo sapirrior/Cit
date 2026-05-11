@@ -2,6 +2,7 @@
 #define REFS_H
 
 char *get_current_branch();
+char *get_ref_sha(const char *ref_name);
 int write_ref(const char *ref_path, const char *sha256);
 int update_ref(const char *ref_path, const char *sha256);
 

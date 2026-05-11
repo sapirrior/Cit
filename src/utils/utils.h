@@ -12,5 +12,6 @@ int dir_exists(const char *path);
 int is_file(const char *path);
 int is_valid_email(const char *email);
 char *get_config_path();
+void normalize_path(char *path);
 
 #endif // UTILS_H

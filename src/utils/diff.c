@@ -11,7 +11,15 @@ FileContent read_file_lines(const char *path) {
 
     char line[4096];
     while (fgets(line, sizeof(line), f)) {
-        fc.lines = realloc(fc.lines, sizeof(char *) * (fc.count + 1));
+        char **new_lines = realloc(fc.lines, sizeof(char *) * (fc.count + 1));
+        if (!new_lines) {
+            free_file_content(fc);
+            fclose(f);
+            fc.lines = NULL;
+            fc.count = 0;
+            return fc;
+        }
+        fc.lines = new_lines;
         fc.lines[fc.count++] = strdup(line);
     }
     fclose(f);
@@ -23,13 +31,24 @@ FileContent read_string_lines(const char *str) {
     if (!str) return fc;
 
     char *s = strdup(str);
+    if (!s) return fc;
     char *p = strtok(s, "\n");
     while (p) {
-        fc.lines = realloc(fc.lines, sizeof(char *) * (fc.count + 1));
+        char **new_lines = realloc(fc.lines, sizeof(char *) * (fc.count + 1));
+        if (!new_lines) {
+            free_file_content(fc);
+            free(s);
+            fc.lines = NULL;
+            fc.count = 0;
+            return fc;
+        }
+        fc.lines = new_lines;
         // Add newline back if it was stripped
         char *line = malloc(strlen(p) + 2);
-        sprintf(line, "%s\n", p);
-        fc.lines[fc.count++] = line;
+        if (line) {
+            snprintf(line, strlen(p) + 2, "%s\n", p);
+            fc.lines[fc.count++] = line;
+        }
         p = strtok(NULL, "\n");
     }
     free(s);
@@ -77,12 +96,17 @@ void diff_files(FileContent a, FileContent b, const char *label_a, const char *l
 
     int *v = calloc(2 * MAX + 1, sizeof(int));
     int **trace = calloc(MAX + 1, sizeof(int *));
+    if (!v || !trace) {
+        free(v); free(trace);
+        return;
+    }
     int d, k;
 
     printf(COLOR_BOLD "--- %s\n+++ %s" COLOR_RESET "\n", label_a, label_b);
 
     for (d = 0; d <= MAX; d++) {
         trace[d] = malloc(sizeof(int) * (2 * MAX + 1));
+        if (!trace[d]) goto done;
         for (k = -d; k <= d; k += 2) {
             int x, y;
             if (k == -d || (k != d && v[MAX + k - 1] < v[MAX + k + 1])) {

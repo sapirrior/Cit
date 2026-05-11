@@ -67,9 +67,15 @@ We follow a strict, structured commit message format based on the [Conventional 
 1.  **Issue First:** For significant features or changes, please open an issue first to discuss the proposal.
 2.  **Branching:** Create a descriptive branch name (e.g., `fix/sha-buffer-overflow` or `feat/cmd-status-verbose`).
 3.  **Code Standards:**
-    - Adhere to the existing C99+ coding style (snake_case, explicit memory management).
+    - **Naming Conventions**:
+        - **Functions**: Use `snake_case` (e.g., `read_index`, `write_object`).
+        - **Variables**: Use `snake_case` (e.g., `current_sha256`, `path_buffer`).
+        - **Structs**: Use `PascalCase` (e.g., `IndexEntry`, `TreeStack`).
+        - **Macros & Enums**: Use `SCREAMING_SNAKE_CASE` (e.g., `MAX_STACK`, `OBJ_BLOB`).
+    - **Path Safety**: Use `normalize_path()` from `src/utils/utils.h` for all user-provided paths.
+    - **Merkle Trees**: New tree-aware commands must support recursive traversal of the hierarchical tree object format (`<type> <SHA> <name>\n`).
+    - Adhere to the existing C99+ coding style.
     - Ensure `make clean && make` passes without warnings.
-    - Update `src/utils/portability.h` if introducing platform-specific logic.
 4.  **Documentation:** Update `README.md` or `GEMINI.md` if your change affects the user-facing API or build process.
 5.  **Review:** All PRs require at least one review from a maintainer. Address all feedback promptly.
 

@@ -15,7 +15,8 @@ int cmd_config(int argc, char *argv[]) {
 
     // Create .citconfig directory if it doesn't exist
     char dir[512];
-    strcpy(dir, path);
+    strncpy(dir, path, sizeof(dir) - 1);
+    dir[sizeof(dir) - 1] = '\0';
     char *last_slash = strrchr(dir, '/');
     if (last_slash) {
         *last_slash = 0;
@@ -31,9 +32,9 @@ int cmd_config(int argc, char *argv[]) {
         char line[256];
         while (fgets(line, sizeof(line), f)) {
             if (strncmp(line, "username=", 9) == 0) {
-                sscanf(line + 9, "%s", username);
+                sscanf(line + 9, "%255s", username);
             } else if (strncmp(line, "email=", 6) == 0) {
-                sscanf(line + 6, "%s", email);
+                sscanf(line + 6, "%255s", email);
             }
         }
         fclose(f);

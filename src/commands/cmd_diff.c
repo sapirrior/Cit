@@ -28,7 +28,7 @@ int cmd_diff(int argc, char *argv[]) {
             size_t obj_len;
             obj_type type;
             char hex[65];
-            for (int j = 0; j < 32; j++) sprintf(hex + (j * 2), "%02x", index->entries[i].sha256[j]);
+            for (int j = 0; j < 32; j++) snprintf(hex + (j * 2), sizeof(hex) - (j * 2), "%02x", index->entries[i].sha256[j]);
             hex[64] = 0;
 
             char *index_content = read_object(hex, &obj_len, &type);
