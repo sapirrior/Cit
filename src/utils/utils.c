@@ -50,16 +50,20 @@ int copy_file(const char *src, const char *dst) {
     }
     char buf[4096];
     size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), fsrc)) > 0) {
-        if (fwrite(buf, 1, n, fdst) != n) {
-            fclose(fsrc);
-            fclose(fdst);
-            return -1;
+    int status = 0;
+    while (!feof(fsrc) && !ferror(fsrc)) {
+        n = fread(buf, 1, sizeof(buf), fsrc);
+        if (n > 0) {
+            if (fwrite(buf, 1, n, fdst) != n) {
+                status = -1;
+                break;
+            }
         }
     }
+    if (ferror(fsrc)) status = -1;
     fclose(fsrc);
     fclose(fdst);
-    return 0;
+    return status;
 }
 
 char *file_to_string(const char *path) {

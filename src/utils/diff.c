@@ -76,7 +76,7 @@ void diff_files(FileContent a, FileContent b, const char *label_a, const char *l
     if (MAX == 0) return;
 
     int *v = calloc(2 * MAX + 1, sizeof(int));
-    int **trace = malloc(sizeof(int *) * (MAX + 1));
+    int **trace = calloc(MAX + 1, sizeof(int *));
     int d, k;
 
     printf(COLOR_BOLD "--- %s\n+++ %s" COLOR_RESET "\n", label_a, label_b);
@@ -107,7 +107,9 @@ void diff_files(FileContent a, FileContent b, const char *label_a, const char *l
     }
 
 done:
-    for (int i = 0; i <= d; i++) free(trace[i]);
+    for (int i = 0; i <= MAX; i++) {
+        if (trace[i]) free(trace[i]);
+    }
     free(trace);
     free(v);
 }
