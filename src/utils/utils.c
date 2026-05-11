@@ -208,3 +208,78 @@ void normalize_path(char *path) {
     *dst = '\0';
     free(copy);
 }
+
+int remove_directory_recursive(const char *path) {
+    DIR *d = opendir(path);
+    size_t path_len = strlen(path);
+    int r = -1;
+
+    if (d) {
+        struct dirent *p;
+        r = 0;
+        while (!r && (p = readdir(d))) {
+            int r2 = -1;
+            char *buf;
+            size_t len;
+
+            /* Skip the names "." and ".." as we don't want to recurse on them. */
+            if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, ".."))
+                continue;
+
+            len = path_len + strlen(p->d_name) + 2; 
+            buf = malloc(len);
+
+            if (buf) {
+                struct stat statbuf;
+
+                snprintf(buf, len, "%s/%s", path, p->d_name);
+                if (!stat(buf, &statbuf)) {
+                    if (S_ISDIR(statbuf.st_mode))
+                        r2 = remove_directory_recursive(buf);
+                    else
+                        r2 = unlink(buf);
+                }
+                free(buf);
+            }
+            r = r2;
+        }
+        closedir(d);
+    }
+
+    if (!r)
+        r = rmdir(path);
+
+    return r;
+}
+
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
+
+int safe_execute(const char *command, char *const argv[]) {
+#ifdef _WIN32
+    // On Windows, fallback to system() for now or implement CreateProcess
+    // Note: This is less secure but keeps basic portability for this phase.
+    char cmd_line[1024] = {0};
+    for (int i = 0; argv[i] != NULL; i++) {
+        strncat(cmd_line, argv[i], sizeof(cmd_line) - strlen(cmd_line) - 1);
+        strncat(cmd_line, " ", sizeof(cmd_line) - strlen(cmd_line) - 1);
+    }
+    return system(cmd_line);
+#else
+    pid_t pid = fork();
+    if (pid == -1) {
+        return -1;
+    } else if (pid == 0) {
+        execvp(command, argv);
+        exit(127); // exec failed
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            return WEXITSTATUS(status);
+        }
+        return -1;
+    }
+#endif
+}
