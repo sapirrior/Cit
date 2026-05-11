@@ -18,13 +18,28 @@ void print_help() {
     printf("  checkout  Switch branches or restore working tree files\n");
     printf("  config    Get and set repository or global options\n");
     printf("\nFlags:\n");
-    printf("  -h, --help  Show this help message\n");
+    printf("  -h, --help     Show this help message\n");
+    printf("  -v, --version  Show version information\n");
 }
 
 int main(int argc, char *argv[]) {
     if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
         print_help();
         return (argc < 2) ? 1 : 0;
+    }
+
+    if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
+        FILE *vf = fopen("src/version.txt", "r");
+        if (vf) {
+            char buf[512];
+            size_t n = fread(buf, 1, sizeof(buf) - 1, vf);
+            buf[n] = '\0';
+            printf("%s", buf);
+            fclose(vf);
+        } else {
+            fprintf(stderr, "Error: src/version.txt not found.\n");
+        }
+        return 0;
     }
 
     char *cmd = argv[1];
