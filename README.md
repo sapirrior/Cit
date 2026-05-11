@@ -2,9 +2,9 @@
   <img src="assets/cit-round.png" alt="Cit Logo" width="100">
 </p>
 
-# Cit - High-Performance Local-First Version Control
+# Cit - Local-First Version Control
 
-Cit is a professional-grade version control system written in C. It is designed to provide a secure, lightweight, and fast local version control experience by employing SHA-256 hashing for data integrity and optimized filesystem operations.
+Cit is a version control system written in C. It is designed to provide a secure and fast local version control experience by employing SHA-256 hashing for data integrity and filesystem operations.
 
 ## Core Technical Specifications
 - Data Integrity: Mandatory SHA-256 identification for all project objects.

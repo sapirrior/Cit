@@ -12,24 +12,15 @@ CFLAGS = -Wall -g \
 LDFLAGS = -lz -lcurl
 
 SRC = $(shell find src -name "*.c")
-OBJDIR = objects
+BUILD_DIR = build
+OBJDIR = $(BUILD_DIR)/obj
 OBJ = $(SRC:src/%.c=$(OBJDIR)/%.o)
-TARGET = cit
+TARGET = $(BUILD_DIR)/cit
 
-all: $(OBJDIR) $(TARGET)
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-	mkdir -p $(OBJDIR)/core/object
-	mkdir -p $(OBJDIR)/core/index
-	mkdir -p $(OBJDIR)/core/hash
-	mkdir -p $(OBJDIR)/core/config
-	mkdir -p $(OBJDIR)/core/refs
-	mkdir -p $(OBJDIR)/commands
-	mkdir -p $(OBJDIR)/utils
-	mkdir -p $(OBJDIR)/ui
+all: $(TARGET)
 
 $(TARGET): $(OBJ)
+	@mkdir -p $(BUILD_DIR)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
 $(OBJDIR)/%.o: src/%.c
@@ -37,6 +28,6 @@ $(OBJDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJDIR) $(TARGET)
+	rm -rf $(BUILD_DIR)
 
 .PHONY: all clean

@@ -1,4 +1,4 @@
-cit
-objects/
-*.o
-assets
+build/
+assets/
+GEMINI.md
+.gemini/
