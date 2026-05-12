@@ -20,5 +20,6 @@ Index *read_index();
 int write_index(Index *index);
 void free_index(Index *index);
 int add_to_index(Index *index, const char *path, const uint8_t sha256[32], uint32_t size);
+int remove_from_index(Index *index, const char *path);
 
 #endif // INDEX_H

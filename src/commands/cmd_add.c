@@ -88,6 +88,9 @@ static int add_recursive(Index *index, const char *path) {
             add_recursive(index, subpath);
         }
         closedir(dir);
+    } else {
+        // Path does not exist on disk, check if it was in the index and remove it (stage deletion)
+        remove_from_index(index, path);
     }
     return 0;
 }

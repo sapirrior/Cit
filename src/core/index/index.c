@@ -100,3 +100,22 @@ int add_to_index(Index *index, const char *path, const uint8_t sha256[32], uint3
     
     return 0;
 }
+
+int remove_from_index(Index *index, const char *path) {
+    int low = 0, high = (int)index->count - 1;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        int cmp = strcmp(index->entries[mid].path, path);
+        if (cmp == 0) {
+            if ((uint32_t)mid < index->count - 1) {
+                memmove(&index->entries[mid], &index->entries[mid + 1], (index->count - 1 - mid) * sizeof(IndexEntry));
+            }
+            index->count--;
+            // Optional: realloc to shrink, but not strictly necessary
+            return 0;
+        }
+        if (cmp < 0) low = mid + 1;
+        else high = mid - 1;
+    }
+    return -1;
+}
