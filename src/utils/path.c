@@ -63,3 +63,43 @@ void normalize_path(char *path) {
     *dst = '\0';
     free(copy);
 }
+
+char *find_cit_root(char *buffer, size_t size) {
+    char current[1024];
+    if (!getcwd(current, sizeof(current))) return NULL;
+
+    while (1) {
+        char cit_path[2048];
+        snprintf(cit_path, sizeof(cit_path), "%s/.cit", current);
+        if (dir_exists(cit_path)) {
+            strncpy(buffer, current, size - 1);
+            buffer[size - 1] = '\0';
+            return buffer;
+        }
+
+        // Move to parent directory
+        char *last_slash = strrchr(current, '/');
+#ifdef _WIN32
+        if (!last_slash) last_slash = strrchr(current, '\\');
+#endif
+
+        if (!last_slash || last_slash == current) {
+            // Root reached
+            if (last_slash == current) {
+                // Check root itself if it hasn't been checked
+                snprintf(cit_path, sizeof(cit_path), "/.cit");
+                if (dir_exists(cit_path)) {
+                    strncpy(buffer, "/", size - 1);
+                    buffer[size - 1] = '\0';
+                    return buffer;
+                }
+            }
+            break;
+        }
+
+        *last_slash = '\0';
+        if (strlen(current) == 0) break;
+    }
+
+    return NULL;
+}

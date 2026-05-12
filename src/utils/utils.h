@@ -13,6 +13,7 @@ int is_file(const char *path);
 int is_valid_email(const char *email);
 char *get_config_path();
 void normalize_path(char *path);
+char *find_cit_root(char *buffer, size_t size);
 int remove_directory_recursive(const char *path);
 int safe_execute(const char *command, char *const argv[]);
 
