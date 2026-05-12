@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        printf("Cit version %s\n", CIT_VERSION);
+        printf("%s\n", CIT_VERSION);
         return 0;
     }
 
