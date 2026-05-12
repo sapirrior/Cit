@@ -50,7 +50,7 @@ cit config -e "email@example.com"
 
 ### Global Flags
 - `-h, --help`: Show help message.
-- `-v, --version`: Show version information from `src/version.txt`.
+- `-v, --version`: Show version information defined in `src/version.h`.
 
 ### Repository Management
 - `cit init`: Initialize a new Cit repository in the current directory.

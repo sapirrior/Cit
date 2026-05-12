@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "commands.h"
+#include "version.h"
 
 void print_help() {
     printf("Usage: cit <command> [<args>]\n");
@@ -29,16 +30,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        FILE *vf = fopen("src/version.txt", "r");
-        if (vf) {
-            char buf[512];
-            size_t n = fread(buf, 1, sizeof(buf) - 1, vf);
-            buf[n] = '\0';
-            printf("%s", buf);
-            fclose(vf);
-        } else {
-            fprintf(stderr, "Error: src/version.txt not found.\n");
-        }
+        printf("%s\n", CIT_VERSION);
         return 0;
     }
 
